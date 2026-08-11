@@ -1,0 +1,51 @@
+# ==============================================================================
+# TalentLens AI - Docker Compose Development & Production Stack
+# ==============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # PostgreSQL Database (Production)
+  # ---------------------------------------------------------------------------
+  db:
+    image: postgres:16-alpine
+    container_name: talentlens-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: talentlens
+      POSTGRES_PASSWORD: talentlens_secure_password
+      POSTGRES_DB: talentlens_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U talentlens"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ---------------------------------------------------------------------------
+  # TalentLens AI Application
+  # ---------------------------------------------------------------------------
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: talentlens-app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://talentlens:talentlens_secure_password@db:5432/talentlens_db
+      AUTH_SECRET: your-production-jwt-secret-change-this
+      NODE_ENV: production
+      # Optional AI API Keys (uncomment to enable live AI):
+      # GEMINI_API_KEY: your-gemini-api-key
+      # OPENAI_API_KEY: your-openai-api-key
+    ports:
+      - "3000:3000"
+
+volumes:
+  pgdata:
+    driver: local
